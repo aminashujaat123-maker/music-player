@@ -1,0 +1,7 @@
+node_modules/
+.env
+*.db
+uploads/songs/*
+uploads/covers/*
+!uploads/songs/.gitkeep
+!uploads/covers/.gitkeep

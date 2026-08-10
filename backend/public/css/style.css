@@ -770,6 +770,106 @@ img {
 }
 
 /* ============================================
+   SONG LIST (Spotify-style rows)
+   ============================================ */
+.song-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.song-row {
+  display: grid;
+  grid-template-columns: 32px 44px 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.song-row:hover {
+  background: var(--bg-highlight);
+}
+.song-row.playing .row-title {
+  color: var(--accent);
+}
+
+.row-index {
+  width: 32px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.row-play-btn {
+  display: none;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+}
+.row-play-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.row-equalizer {
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.song-row:hover .row-number {
+  display: none;
+}
+.song-row:hover .row-play-btn {
+  display: flex;
+}
+
+body.is-playing .song-row.playing .row-number,
+body.is-playing .song-row.playing .row-play-btn {
+  display: none;
+}
+body.is-playing .song-row.playing .row-equalizer {
+  display: flex;
+}
+
+.row-cover {
+  width: 44px;
+  height: 44px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: var(--bg-highlight);
+  flex-shrink: 0;
+}
+
+.row-info {
+  min-width: 0;
+}
+
+.row-title {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row-artist {
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row-duration {
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding-right: 8px;
+}
+/* ============================================
    RESPONSIVE
    ============================================ */
 @media (max-width: 900px) {

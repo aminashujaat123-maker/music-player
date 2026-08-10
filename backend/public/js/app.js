@@ -86,6 +86,7 @@ function coverOrPlaceholder(song) {
         `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="200" height="200" fill="#333"/><text x="50%" y="50%" font-size="60" fill="#666" text-anchor="middle" dominant-baseline="middle">♪</text></svg>`,
       )}`;
 }
+
 function greetingByTime() {
   const hour = new Date().getHours();
   if (hour < 12) return "Good morning";
@@ -117,32 +118,36 @@ function heroHtml() {
 }
 
 // ============================================
-// SONG CARD RENDERING
+// SONG ROW RENDERING (Spotify-style list)
 // ============================================
-function songCardHtml(song, index) {
+function songRowHtml(song, index) {
   const isPlaying =
     currentIndex === index && currentPlaylist[index]?.id === song.id;
   return `
-    <div class="song-card ${isPlaying ? "playing" : ""}" data-id="${song.id}" data-index="${index}">
-      <div class="cover-wrap">
-        <img class="cover" src="${coverOrPlaceholder(song)}" alt="${escapeHtml(song.title)}" />
-       <button class="play-btn" title="Play">
+    <div class="song-row ${isPlaying ? "playing" : ""}" data-id="${song.id}" data-index="${index}">
+      <div class="row-index">
+        <span class="row-number">${index + 1}</span>
+        <button class="row-play-btn" title="Play">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
         </button>
-        <div class="card-equalizer">
+        <div class="row-equalizer">
           <div class="equalizer"><span></span><span></span><span></span><span></span></div>
         </div>
       </div>
-      <h3>${escapeHtml(song.title)}</h3>
-      <p>${escapeHtml(song.artist)}</p>
+      <img class="row-cover" src="${coverOrPlaceholder(song)}" alt="${escapeHtml(song.title)}" />
+      <div class="row-info">
+        <div class="row-title">${escapeHtml(song.title)}</div>
+        <div class="row-artist">${escapeHtml(song.artist)}</div>
+      </div>
+      <div class="row-duration">${song.duration ? formatTime(song.duration) : ""}</div>
     </div>
   `;
 }
 
-function attachCardHandlers(container, playlist) {
-  container.querySelectorAll(".song-card").forEach((card) => {
-    card.addEventListener("click", () => {
-      const index = Number(card.dataset.index);
+function attachRowHandlers(container, playlist) {
+  container.querySelectorAll(".song-row").forEach((row) => {
+    row.addEventListener("click", () => {
+      const index = Number(row.dataset.index);
       playSong(playlist, index);
     });
   });
@@ -168,14 +173,10 @@ async function renderHome() {
   if (recent.length > 0) {
     html += `
       <div class="section-heading"><h2>Recently played</h2></div>
-      <div class="card-grid" id="recentGrid">
-        ${recent.map((s, i) => songCardHtml(s, i)).join("")}
+      <div class="song-list" id="recentGrid">
+        ${recent.map((s, i) => songRowHtml(s, i)).join("")}
       </div>
     `;
-  }
-  async function refreshSidebarRecent() {
-    const recent = await apiFetch("/history").catch(() => []);
-    renderSidebarRecent(recent);
   }
 
   html += `
@@ -191,16 +192,16 @@ async function renderHome() {
       </div>
     `;
   } else {
-    html += `<div class="card-grid" id="allGrid">${allSongs.map((s, i) => songCardHtml(s, i)).join("")}</div>`;
+    html += `<div class="song-list" id="allGrid">${allSongs.map((s, i) => songRowHtml(s, i)).join("")}</div>`;
   }
 
   content.innerHTML = html;
 
   if (recent.length > 0) {
-    attachCardHandlers(document.getElementById("recentGrid"), recent);
+    attachRowHandlers(document.getElementById("recentGrid"), recent);
   }
   if (allSongs.length > 0) {
-    attachCardHandlers(document.getElementById("allGrid"), allSongs);
+    attachRowHandlers(document.getElementById("allGrid"), allSongs);
   }
 }
 
@@ -221,12 +222,12 @@ async function renderLibrary() {
              <h3>You haven't added any songs yet</h3>
              <p>Use the "Add Song" button to upload your songs.</p>
            </div>`
-        : `<div class="card-grid" id="libraryGrid">${mine.map((s, i) => songCardHtml(s, i)).join("")}</div>`
+        : `<div class="song-list" id="libraryGrid">${mine.map((s, i) => songRowHtml(s, i)).join("")}</div>`
     }
   `;
 
   if (mine.length > 0) {
-    attachCardHandlers(document.getElementById("libraryGrid"), mine);
+    attachRowHandlers(document.getElementById("libraryGrid"), mine);
   }
 }
 
@@ -265,12 +266,12 @@ async function runSearch(query) {
              <h3>No results found</h3>
              <p>Try searching for something else.</p>
            </div>`
-        : `<div class="card-grid" id="searchGrid">${results.map((s, i) => songCardHtml(s, i)).join("")}</div>`
+        : `<div class="song-list" id="searchGrid">${results.map((s, i) => songRowHtml(s, i)).join("")}</div>`
     }
   `;
 
   if (results.length > 0) {
-    attachCardHandlers(document.getElementById("searchGrid"), results);
+    attachRowHandlers(document.getElementById("searchGrid"), results);
   }
 }
 
@@ -302,6 +303,26 @@ function setActiveNav(view) {
   document.querySelectorAll(".nav-link[data-view]").forEach((link) => {
     link.classList.toggle("active", link.dataset.view === view);
   });
+}
+
+// ============================================
+// RECENTLY PLAYED REFRESH HELPERS
+// ============================================
+async function refreshSidebarRecent() {
+  const recent = await apiFetch("/history").catch(() => []);
+  renderSidebarRecent(recent);
+}
+
+async function refreshHomeRecent() {
+  if (currentView !== "home") return;
+  const recent = await apiFetch("/history").catch(() => []);
+  const grid = document.getElementById("recentGrid");
+  if (grid) {
+    grid.innerHTML = recent.map((s, i) => songRowHtml(s, i)).join("");
+    attachRowHandlers(grid, recent);
+  } else if (recent.length > 0) {
+    renderHome();
+  }
 }
 
 // ============================================
@@ -345,23 +366,24 @@ function playSong(playlist, index) {
     npCover.style.display = "none";
   }
 
-  // Log to play history, then refresh the "Recently Played" sidebar
+  // Log to play history, then refresh the "Recently Played" sections
   apiFetch("/history", {
     method: "POST",
     body: JSON.stringify({ song_id: song.id }),
   })
-    .then(() => refreshSidebarRecent())
+    .then(() => {
+      refreshSidebarRecent();
+      refreshHomeRecent();
+    })
     .catch(() => {});
+
+  refreshPlayingHighlight();
 }
 
 function refreshPlayingHighlight() {
-  document.querySelectorAll(".song-card").forEach((card) => {
-    const idx = Number(card.dataset.index);
-    const isCurrent =
-      currentPlaylist[idx] &&
-      currentPlaylist[currentIndex] &&
-      currentPlaylist[idx].id === currentPlaylist[currentIndex].id;
-    card.classList.toggle("playing", idx === currentIndex);
+  document.querySelectorAll(".song-row").forEach((row) => {
+    const idx = Number(row.dataset.index);
+    row.classList.toggle("playing", idx === currentIndex);
   });
 }
 
@@ -401,7 +423,6 @@ audioPlayer.addEventListener("loadedmetadata", () => {
   seekBar.max = Math.floor(audioPlayer.duration);
   totalTimeEl.textContent = formatTime(audioPlayer.duration);
 });
-
 audioPlayer.addEventListener("timeupdate", () => {
   seekBar.value = Math.floor(audioPlayer.currentTime);
   currentTimeEl.textContent = formatTime(audioPlayer.currentTime);
